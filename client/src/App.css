@@ -1,13 +1,33 @@
-﻿.weather-page.default {
+.weather-page.default {
   background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+}
+
+.weather-page.day {
+  background: linear-gradient(160deg, #38bdf8, #3b82f6);
 }
 
 .weather-page.sunny {
   background: linear-gradient(135deg, #fbbf24, #fb923c);
 }
 
+.weather-page.hot {
+  background: linear-gradient(145deg, #fb923c, #f97316);
+}
+
+.weather-page.cloudy {
+  background: linear-gradient(160deg, #64748b, #334155);
+}
+
+.weather-page.evening {
+  background: linear-gradient(160deg, #f59e0b, #7c3aed);
+}
+
 .weather-page.rain {
   background: linear-gradient(180deg, #111827, #1f2937);
+}
+
+.weather-page.thunderstorm {
+  background: linear-gradient(180deg, #020617, #1e293b);
 }
 
 .weather-page.night {
@@ -23,6 +43,7 @@
 
 .sunny-effect,
 .rain-effect,
+.thunderstorm-effect,
 .night-effect {
   position: absolute;
   inset: 0;
@@ -32,6 +53,7 @@
 
 .weather-page.sunny .sunny-effect,
 .weather-page.rain .rain-effect,
+.weather-page.thunderstorm .thunderstorm-effect,
 .weather-page.night .night-effect {
   opacity: 1;
 }

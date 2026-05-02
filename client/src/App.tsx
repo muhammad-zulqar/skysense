@@ -169,16 +169,37 @@ function App() {
   const getBackgroundMode = () => {
     if (!weather?.weather?.length) return "default";
 
-    const condition = weather.weather[0].main;
-    const currentUtc = Math.floor(Date.now() / 1000);
+    const condition = weather.weather[0]?.main ?? "";
+    const temp = weather.main?.temp ?? 0;
+    const currentUtc = weather.dt ?? Math.floor(Date.now() / 1000);
     const sunrise = weather.sys?.sunrise;
     const sunset = weather.sys?.sunset;
-    const isNight = sunrise && sunset ? currentUtc < sunrise || currentUtc > sunset : false;
+    const rainyConditions = ["Rain", "Drizzle"];
+    const cloudyConditions = ["Clouds", "Mist", "Fog", "Haze", "Smoke", "Dust", "Sand", "Ash", "Squall"];
 
-    if (isNight) return "night";
+    if (condition === "Thunderstorm") return "thunderstorm";
+    if (rainyConditions.includes(condition)) return "rain";
+
+    if (sunrise && sunset) {
+      const eveningStart = sunset - 2 * 60 * 60;
+      const nightStart = sunset + 60 * 60;
+
+      if (currentUtc < sunrise || currentUtc >= nightStart) return "night";
+      if (currentUtc >= eveningStart) return "evening";
+      if (cloudyConditions.includes(condition)) return "cloudy";
+      if (condition === "Clear" && temp >= 32) return "hot";
+      if (condition === "Clear") return "sunny";
+      return "day";
+    }
+
+      const localHour = new Date((currentUtc + (weather.timezone ?? 0)) * 1000).getUTCHours();
+
+    if (localHour >= 19 || localHour < 6) return "night";
+    if (localHour >= 17) return "evening";
+    if (cloudyConditions.includes(condition)) return "cloudy";
+    if (condition === "Clear" && temp >= 32) return "hot";
     if (condition === "Clear") return "sunny";
-    if (["Rain", "Drizzle", "Thunderstorm"].includes(condition)) return "rain";
-    return "default";
+    return "day";
   };
 
   const backgroundMode = getBackgroundMode();
@@ -195,6 +216,15 @@ function App() {
         <div className="rain-effect">
           {Array.from({ length: 14 }, (_, index) => (
             <span key={index} className={`raindrop drop-${index + 1}`} />
+          ))}
+        </div>
+
+        <div className="thunderstorm-effect">
+          <div className="storm-cloud" />
+          <div className="lightning lightning-1" />
+          <div className="lightning lightning-2" />
+          {Array.from({ length: 18 }, (_, index) => (
+            <span key={index} className={`raindrop storm-drop drop-${(index % 14) + 1}`} />
           ))}
         </div>
 
