@@ -4,14 +4,23 @@ import WeatherCard from "./components/WeatherCard";
 import ForecastCard from "./components/ForecastCard";
 import HourlyChart from "./components/HourlyChart";
 import AdviceBox from "./components/AdviceBox";
+import AQICard from "./components/AQICard";
 import "./App.css";
 
 function App() {
   const [weather, setWeather] = useState<any>(null);
   const [forecast, setForecast] = useState<any[]>([]);
   const [hourly, setHourly] = useState<Array<{ time: string; temp: number }>>([]);
+  const [aqi, setAqi] = useState<{ index: number; components?: Record<string, number> } | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState({
+    unit: "C" as "C" | "F",
+    compactView: false,
+    highContrast: false,
+    showAnimations: true,
+  });
 
   const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY ?? "f5a7b01a2b7f34a2e1a7275eb8a1ae2c";
 
@@ -60,10 +69,31 @@ function App() {
         setError(currentData.message || "Unable to fetch weather data.");
         setWeather(null);
         setForecast([]);
+        setAqi(null);
         return;
       }
 
       setWeather(currentData);
+      if (currentData?.coord?.lat != null && currentData?.coord?.lon != null) {
+        try {
+          const aqiRes = await fetch(
+            `https://api.openweathermap.org/data/2.5/air_pollution?lat=${currentData.coord.lat}&lon=${currentData.coord.lon}&appid=${apiKey}`
+          );
+          const aqiData = await aqiRes.json();
+          if (aqiRes.ok && aqiData?.list?.length) {
+            setAqi({
+              index: aqiData.list[0].main?.aqi ?? 0,
+              components: aqiData.list[0].components,
+            });
+          } else {
+            setAqi(null);
+          }
+        } catch {
+          setAqi(null);
+        }
+      } else {
+        setAqi(null);
+      }
 
       if (!forecastRes.ok) {
         setError(forecastData.message || "Unable to fetch forecast data.");
@@ -77,10 +107,11 @@ function App() {
       setError("Network error. Please try again.");
       setWeather(null);
       setForecast([]);
+      setAqi(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiKey]);
 
   const fetchWeatherByCoords = useCallback(
     async (lat: number, lon: number) => {
@@ -104,6 +135,7 @@ function App() {
         setError("Please enter a city name.");
         setWeather(null);
         setForecast([]);
+        setAqi(null);
         return;
       }
 
@@ -203,41 +235,100 @@ function App() {
   };
 
   const backgroundMode = getBackgroundMode();
+  const toDisplayTemp = (tempC: number) =>
+    settings.unit === "F" ? Math.round((tempC * 9) / 5 + 32) : Math.round(tempC);
+  const displayHourly = hourly.map((item) => ({ ...item, temp: toDisplayTemp(item.temp) }));
 
   return (
-    <div className={`min-h-screen relative overflow-hidden flex flex-col items-center justify-center gap-6 p-4 transition-all duration-700 weather-page ${backgroundMode}`}>
-      <div className="weather-animation pointer-events-none absolute inset-0 z-0">
-        <div className="sunny-effect">
-          <div className="sun" />
-          <div className="cloud cloud-1" />
-          <div className="cloud cloud-2" />
-        </div>
+    <div
+      className={`min-h-screen relative overflow-hidden flex flex-col items-center justify-center gap-6 p-4 transition-all duration-700 weather-page ${backgroundMode}`}
+    >
+      {settings.showAnimations && (
+        <div className="weather-animation pointer-events-none absolute inset-0 z-0">
+          <div className="sunny-effect">
+            <div className="sun" />
+            <div className="cloud cloud-1" />
+            <div className="cloud cloud-2" />
+          </div>
 
-        <div className="rain-effect">
-          {Array.from({ length: 14 }, (_, index) => (
-            <span key={index} className={`raindrop drop-${index + 1}`} />
-          ))}
-        </div>
+          <div className="rain-effect">
+            {Array.from({ length: 14 }, (_, index) => (
+              <span key={index} className={`raindrop drop-${index + 1}`} />
+            ))}
+          </div>
 
-        <div className="thunderstorm-effect">
-          <div className="storm-cloud" />
-          <div className="lightning lightning-1" />
-          <div className="lightning lightning-2" />
-          {Array.from({ length: 18 }, (_, index) => (
-            <span key={index} className={`raindrop storm-drop drop-${(index % 14) + 1}`} />
-          ))}
-        </div>
+          <div className="thunderstorm-effect">
+            <div className="storm-cloud" />
+            <div className="lightning lightning-1" />
+            <div className="lightning lightning-2" />
+            {Array.from({ length: 18 }, (_, index) => (
+              <span key={index} className={`raindrop storm-drop drop-${(index % 14) + 1}`} />
+            ))}
+          </div>
 
-        <div className="night-effect">
-          <div className="moon" />
-          {Array.from({ length: 14 }, (_, index) => (
-            <span key={index} className={`star star-${index + 1}`} />
-          ))}
+          <div className="night-effect">
+            <div className="moon" />
+            {Array.from({ length: 14 }, (_, index) => (
+              <span key={index} className={`star star-${index + 1}`} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="relative z-10 w-full max-w-3xl">
-        <SearchBar onSearch={handleSearch} />
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <SearchBar onSearch={handleSearch} />
+          <button
+            type="button"
+            onClick={() => setShowSettings((prev) => !prev)}
+            className="rounded-xl border border-white/30 bg-slate-900/35 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition hover:bg-slate-800/45"
+          >
+            {showSettings ? "Close Settings" : "Settings"}
+          </button>
+        </div>
+
+        {showSettings && (
+          <div className="mb-6 grid gap-3 rounded-2xl border border-white/20 bg-slate-900/45 p-4 text-white backdrop-blur-lg sm:grid-cols-2">
+            <label className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-sm">
+              <span>Temperature unit</span>
+              <select
+                value={settings.unit}
+                onChange={(e) => setSettings((prev) => ({ ...prev, unit: e.target.value as "C" | "F" }))}
+                className="rounded-lg bg-slate-800/80 px-2 py-1 text-sm outline-none"
+              >
+                <option value="C">Celsius</option>
+                <option value="F">Fahrenheit</option>
+              </select>
+            </label>
+
+            <label className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-sm">
+              <span>Compact layout</span>
+              <input
+                type="checkbox"
+                checked={settings.compactView}
+                onChange={(e) => setSettings((prev) => ({ ...prev, compactView: e.target.checked }))}
+              />
+            </label>
+
+            <label className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-sm">
+              <span>High contrast mode</span>
+              <input
+                type="checkbox"
+                checked={settings.highContrast}
+                onChange={(e) => setSettings((prev) => ({ ...prev, highContrast: e.target.checked }))}
+              />
+            </label>
+
+            <label className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-sm">
+              <span>Background animations</span>
+              <input
+                type="checkbox"
+                checked={settings.showAnimations}
+                onChange={(e) => setSettings((prev) => ({ ...prev, showAnimations: e.target.checked }))}
+              />
+            </label>
+          </div>
+        )}
 
         {loading && (
           <div className="text-white">Loading weather…</div>
@@ -252,19 +343,32 @@ function App() {
         {weather?.main && (
           <>
             <WeatherCard
-              temp={weather.main.temp}
-              feelsLike={weather.main.feels_like}
+              temp={toDisplayTemp(weather.main.temp)}
+              feelsLike={toDisplayTemp(weather.main.feels_like)}
               humidity={weather.main.humidity}
               windSpeed={weather.wind?.speed}
               pressure={weather.main.pressure}
               condition={weather.weather[0]?.main ?? "Unknown"}
               city={weather.name}
+              unitSymbol={settings.unit}
+              compact={settings.compactView}
+              highContrast={settings.highContrast}
             />
             <AdviceBox advice={getAdvice()} />
+            {aqi && (
+              <div className="mt-4">
+                <AQICard aqi={aqi.index} components={aqi.components} />
+              </div>
+            )}
 
             {hourly.length > 0 && (
               <div className="mt-8">
-                <HourlyChart data={hourly} />
+                <HourlyChart
+                  data={displayHourly}
+                  unitSymbol={settings.unit}
+                  compact={settings.compactView}
+                  highContrast={settings.highContrast}
+                />
               </div>
             )}
 
@@ -280,8 +384,11 @@ function App() {
                         month: "short",
                         day: "numeric",
                       })}
-                      temp={item.temp}
+                      temp={toDisplayTemp(item.temp)}
                       condition={item.condition}
+                      unitSymbol={settings.unit}
+                      compact={settings.compactView}
+                      highContrast={settings.highContrast}
                     />
                   ))}
                 </div>

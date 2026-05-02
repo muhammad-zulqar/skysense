@@ -15,20 +15,27 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 type Props = {
   data: Array<{ time: string; temp: number }>;
+  unitSymbol: "C" | "F";
+  compact?: boolean;
+  highContrast?: boolean;
 };
 
-export default function HourlyChart({ data }: Props) {
+export default function HourlyChart({ data, unitSymbol, compact = false, highContrast = false }: Props) {
+  const lineColor = highContrast ? "#f8fafc" : "#60A5FA";
+  const fillColor = highContrast ? "rgba(241, 245, 249, 0.2)" : "rgba(59, 130, 246, 0.18)";
+  const cardClasses = highContrast ? "bg-slate-950/80 border-slate-200/35" : "bg-white/10 border-white/10";
+
   const chartData = {
     labels: data.map((item) => item.time),
     datasets: [
       {
-        label: "Temperature (°C)",
+        label: `Temperature (°${unitSymbol})`,
         data: data.map((item) => item.temp),
         fill: true,
-        backgroundColor: "rgba(59, 130, 246, 0.18)",
-        borderColor: "#60A5FA",
+        backgroundColor: fillColor,
+        borderColor: lineColor,
         pointBackgroundColor: "#ffffff",
-        pointBorderColor: "#60A5FA",
+        pointBorderColor: lineColor,
         tension: 0.35,
         borderWidth: 2,
       },
@@ -44,7 +51,7 @@ export default function HourlyChart({ data }: Props) {
       },
       tooltip: {
         callbacks: {
-          label: (context: any) => `${context.formattedValue}°C`,
+          label: (context: any) => `${context.formattedValue}°${unitSymbol}`,
         },
       },
     },
@@ -70,8 +77,10 @@ export default function HourlyChart({ data }: Props) {
   };
 
   return (
-    <div className="bg-white/10 border border-white/10 rounded-3xl p-4 text-white backdrop-blur-sm shadow-lg h-96">
-      <h3 className="mb-4 text-xl font-semibold">Hourly Forecast</h3>
+    <div
+      className={`border rounded-3xl text-white backdrop-blur-sm shadow-lg ${compact ? "p-3 h-80" : "p-4 h-96"} ${cardClasses}`}
+    >
+      <h3 className={`${compact ? "mb-3 text-lg" : "mb-4 text-xl"} font-semibold`}>Hourly Forecast</h3>
       <div className="h-full">
         <Line data={chartData} options={options} />
       </div>
